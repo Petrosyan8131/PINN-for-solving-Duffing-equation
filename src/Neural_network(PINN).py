@@ -36,13 +36,11 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def grid_of_dots():
     t = (torch.linspace(0, 10.4, dots).unsqueeze(1)).to(device)
     t.requires_grad = True
-    t_in = t[1:]
-    t_bc = t[0]
-    return t, t_in, t_bc
+    return t, t[1:], t[0]
 
-t = grid_of_dots[0]
-t_in = grid_of_dots[1]
-t_bc = grid_of_dots[2]
+t = grid_of_dots()[0]
+t_in = grid_of_dots()[1]
+t_bc = grid_of_dots()[2]
 
 # Задаем искомые значения точек внутри области и на границе для обучения
 f_true = torch.zeros(dots-1).to(device)
