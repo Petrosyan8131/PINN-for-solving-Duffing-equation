@@ -38,10 +38,11 @@ def grid_of_dots():
     t.requires_grad = True
     t_in = t[1:]
     t_bc = t[0]
-    return t_in, t_bc
+    return t, t_in, t_bc
 
-t_in = grid_of_dots[0]
-t_bc = grid_of_dots[1]
+t = grid_of_dots[0]
+t_in = grid_of_dots[1]
+t_bc = grid_of_dots[2]
 
 # Задаем искомые значения точек внутри области и на границе для обучения
 f_true = torch.zeros(dots-1).to(device)
