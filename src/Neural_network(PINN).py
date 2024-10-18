@@ -21,19 +21,6 @@ from tqdm import tqdm
 # b = a.method()
 
 # set the parameters of the equation
-gamma = 1.3
-delta = 3
-alpha = 0.001
-beta = 0.0001
-omega = torch.pi*1.25
-
-# set the numerical approximation
-a = Approx((gamma, delta, alpha, beta, omega))
-b = a.solve()
-
-num_data = torch.from_numpy(b.y[0, 1:]).unsqueeze(1)
-
-matplotlib.rcParams['figure.figsize'] = (10.0, 7.0)
 
 epohs = 6000
 dots = 500
@@ -41,6 +28,7 @@ dots = 500
 loss_all = np.zeros(epohs)
 loss_all_num = np.zeros(epohs)
 lambd = 1
+
 # Используем доступные графические процессоры
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -50,6 +38,7 @@ t.requires_grad = True
 t_in = t[1:]
 t_bc = t[0]
 
+# Задаем искомые значения точек внутри области и на границе для обучения
 f_true = torch.zeros(dots-1).to(device)
 f_true.requires_grad = True
 g_true = torch.tensor([1., 0.]).to(device)
@@ -74,18 +63,14 @@ class Neural(nn.Module):
     def forward(self, x):
         return self.layers_stack(x)
 
-# Создание модели PINN и её обучение
-PINN = Neural().to(device)
-
 metric_data = nn.MSELoss()
 # writer = SummaryWriter()
-optimizer = torch.optim.Adam(PINN.parameters()) #, lr=0.0001
 criterion = nn.NLLLoss()
 
 
-def pdeloss(t, epoh):
+def pdeloss(epoh, p, num_data):
     out = PINN(t_in).to(device)
-    f_in = pde(out, t_in)
+    f_in = pde(out, t_in, p)
 
     f_bc = PINN(t_bc).to(device)
     dxdt = torch.autograd.grad(f_bc, t_bc, torch.ones_like(t_bc), create_graph=True, retain_graph=True)[0]
@@ -103,19 +88,25 @@ def pdeloss(t, epoh):
     
     return loss
 
-def pde(out, t):
+def pde(out, t, p):
+        gamma = p[0]
+        delta = p[1]
+        alpha = p[2]
+        beta = p[3]
+        omega = p[4]
         dxdt = torch.autograd.grad(out, t, torch.ones_like(t), create_graph=True, retain_graph=True)[0]
         d2xdt2 = torch.autograd.grad(dxdt, t, torch.ones_like(t), create_graph=True, retain_graph=True)[0]
         
         fxt = d2xdt2 + delta*dxdt + alpha*out + beta*out**3 - gamma*torch.cos(omega*t)
         return fxt
 
-def train():
+def train(model, p, num_data):
+    optimizer = torch.optim.Adam(model.parameters()) #, lr=0.0001
     pbar = tqdm(range(epohs), desc='Training Progress')
     for step in pbar:
         def closure():
             optimizer.zero_grad()
-            loss = pdeloss(t, step)
+            loss = pdeloss(step, p, num_data)
             loss.backward()
             return loss
 
@@ -126,12 +117,7 @@ def train():
             pbar.set_description("Lambda: %.4f | Step: %d | Loss: %.7f" %
                                 (lambd, step, current_loss))
     pbar.clear()
-
-train()
-# writer.close()
-
-torch.save(PINN.state_dict(), r'./weights/weights_PINN_Duffing_equation.pth')
-# filescolab.download("weights_PINN_harm_oscil_3exp.pth")
+    torch.save(PINN.state_dict(), r'./weights/weights_PINN_Duffing_equation.pth')
 
 # initialize draw functions
 def draw_approx(net, t):
@@ -172,5 +158,23 @@ def draw_history(net, t):
     plt.savefig(r"./figs/history_Duffing.png")
     plt.show()
 
-draw_approx(PINN, t)
-draw_history(PINN, t)
+if __name__ == "__main__":
+    gamma = 1.3
+    delta = 3
+    alpha = 0.001
+    beta = 0.0001
+    omega = torch.pi*1.25
+    p = (gamma, delta, alpha, beta, omega)
+    # set the numerical approximation
+    a = Approx(p)
+    b = a.solve()
+    
+    num_data = torch.from_numpy(b.y[0, 1:]).unsqueeze(1)
+
+    matplotlib.rcParams['figure.figsize'] = (10.0, 7.0)
+    
+    # Создание модели PINN
+    PINN = Neural().to(device)
+    train(PINN, p, num_data)
+    draw_approx(PINN, t)
+    draw_history(PINN, t)
