@@ -136,7 +136,7 @@ def draw_approx(net, t):
     plt.title('Approxing Duffing equation')
     plt.tight_layout()
     plt.savefig(r"./figs/approx_Duffing.png")
-    # plt.show()
+    plt.show()
 
 def draw_history(net, t):
     fs = 12
@@ -159,10 +159,10 @@ def draw_history(net, t):
     plt.title('Loss while training')
     plt.tight_layout()
     plt.savefig(r"./figs/history_Duffing.png")
-    # plt.show()
+    plt.show()
 
 if __name__ == "__main__":
-    gamma, delta, alpha, beta = (0.001, 0.02, 0.0001, 0.001)
+    gamma, delta, alpha, beta = (0.04, 0.02, 0.0001, 0.001)
     par = 1.25
     omega = torch.pi*par
     p = (gamma, delta, alpha, beta, omega)
